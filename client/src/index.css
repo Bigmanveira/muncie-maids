@@ -1,0 +1,196 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: #FDFBF7;
+  --color-foreground: #1A1C1E;
+  --color-primary: #D65A5A;
+  --color-primary-foreground: #FFFFFF;
+  --color-secondary: #2C5282;
+  --color-secondary-foreground: #FFFFFF;
+  --color-muted: #F1EFE9;
+  --color-muted-foreground: #64748B;
+  --color-accent: #F8F0EF;
+  --color-accent-foreground: #D65A5A;
+  --color-destructive: #EF4444;
+  --color-card: #FFFFFF;
+  --color-card-foreground: #111827;
+  --color-popover: #FFFFFF;
+  --color-popover-foreground: #111827;
+  --color-border: #E9E4DB;
+  --color-input: #FFFFFF;
+  --color-ring: #C93F3A;
+  --color-chart-1: #D65A5A;
+  --color-chart-2: #2C5282;
+  --color-chart-3: #6A9A66;
+  --color-chart-4: #E2A94F;
+  --color-chart-5: #6366F1;
+
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-heading: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Playfair Display", ui-serif, serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  --radius-xs: 0.5rem;
+  --radius-sm: 1rem;
+  --radius-md: 1.25rem;
+  --radius-lg: 1.5rem;
+  --radius-xl: 1.75rem;
+  --radius-2xl: 2rem;
+  --radius-3xl: 2.5rem;
+  --radius-4xl: 3rem;
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+  }
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* iOS Safari renders <input type="date"> with its own internal layout — the
+   value sits in a native pill that ignores our padding and border-radius and
+   overflows the rounded right edge. Stripping the native appearance makes iOS
+   treat it like a plain text field that respects our box styling. */
+.date-input {
+  -webkit-appearance: none;
+  appearance: none;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.date-input::-webkit-date-and-time-value {
+  text-align: left;
+  margin: 0;
+}
+
+.date-input::-webkit-datetime-edit {
+  display: inline-flex;
+  align-items: center;
+  padding: 0;
+}
+
+.date-input::-webkit-datetime-edit-fields-wrapper {
+  padding: 0;
+}
+
+.date-input::-webkit-calendar-picker-indicator {
+  margin-left: 0.25rem;
+  padding: 0;
+}
+
+@keyframes price-fade {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.price-fade {
+  animation: price-fade 150ms ease-out;
+}
+
+@keyframes carousel-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.carousel-fade {
+  animation: carousel-fade 500ms ease-out;
+}
+
+@keyframes reveal-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.reveal-hidden {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.reveal-up {
+  animation: reveal-up 700ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes chat-pop-in {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.chat-pop-in {
+  animation: chat-pop-in 500ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes badge-pop {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.25);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.badge-pop {
+  animation: badge-pop 400ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal-hidden {
+    opacity: 1;
+    transform: none;
+  }
+  .reveal-up,
+  .chat-pop-in,
+  .badge-pop {
+    animation: none;
+  }
+}

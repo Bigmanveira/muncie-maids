@@ -1,0 +1,66 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: #FDFBF7;
+  --color-foreground: #1A1C1E;
+  --color-primary: #D65A5A;
+  --color-primary-foreground: #FFFFFF;
+  --color-secondary: #2C5282;
+  --color-secondary-foreground: #FFFFFF;
+  --color-muted: #F1EFE9;
+  --color-muted-foreground: #64748B;
+  --color-accent: #F8F0EF;
+  --color-accent-foreground: #D65A5A;
+  --color-destructive: #EF4444;
+  --color-card: #FFFFFF;
+  --color-card-foreground: #111827;
+  --color-popover: #FFFFFF;
+  --color-popover-foreground: #111827;
+  --color-border: #E9E4DB;
+  --color-input: #FFFFFF;
+  --color-ring: #C93F3A;
+  --color-chart-1: #D65A5A;
+  --color-chart-2: #2C5282;
+  --color-chart-3: #6A9A66;
+  --color-chart-4: #E2A94F;
+  --color-chart-5: #6366F1;
+
+  --color-ink: #10192B;
+  --color-ink-foreground: #FFFFFF;
+
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-heading: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  --radius-xs: 0.5rem;
+  --radius-sm: 1rem;
+  --radius-md: 1.25rem;
+  --radius-lg: 1.5rem;
+  --radius-xl: 1.75rem;
+  --radius-2xl: 2rem;
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+  }
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}

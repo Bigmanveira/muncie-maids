@@ -1,0 +1,18 @@
+node_modules/
+dist/
+.env
+.env.example
+*.local
+.vercel/
+.DS_Store
+
+# stray working files at the project root
+files.zip
+/logo*.png
+
+# internal docs and working material — not for the public repo
+CLAUDE.md
+DECISIONS.md
+munciemaids-product-plan-v2.md
+UI design/
+.claude/
