@@ -3,8 +3,18 @@ import { Icon } from '@iconify/react'
 
 type Phase = 'starting' | 'ready' | 'review' | 'error'
 
-/** In-app single-photo capture: live camera preview, snap a still, confirm or retake. */
-export function StillPhotoCapture({ onCapture, onCancel }: { onCapture: (file: File) => void; onCancel: () => void }) {
+/** In-app single-photo capture: live camera preview, snap a still, confirm or retake.
+ * `facing="user"` opens the front (selfie) camera with a mirrored preview —
+ * used for the profile headshot; documents keep the back camera. */
+export function StillPhotoCapture({
+  onCapture,
+  onCancel,
+  facing = 'environment',
+}: {
+  onCapture: (file: File) => void
+  onCancel: () => void
+  facing?: 'user' | 'environment'
+}) {
   const [phase, setPhase] = useState<Phase>('starting')
   const [errorMessage, setErrorMessage] = useState('')
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
@@ -26,7 +36,7 @@ export function StillPhotoCapture({ onCapture, onCancel }: { onCapture: (file: F
     try {
       if (!navigator.mediaDevices?.getUserMedia) throw new Error('unsupported')
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
+        video: { facingMode: { ideal: facing }, width: { ideal: 1280 }, height: { ideal: 720 } },
         audio: false,
       })
       streamRef.current = stream
@@ -94,7 +104,13 @@ export function StillPhotoCapture({ onCapture, onCancel }: { onCapture: (file: F
       </div>
 
       <div className="relative flex-1 overflow-hidden">
-        <video ref={videoRef} playsInline muted className="absolute inset-0 w-full h-full object-cover" />
+        <video
+          ref={videoRef}
+          playsInline
+          muted
+          className="absolute inset-0 w-full h-full object-cover"
+          style={facing === 'user' ? { transform: 'scaleX(-1)' } : undefined}
+        />
 
         {phase === 'starting' && (
           <div className="absolute inset-0 flex items-center justify-center">
@@ -150,7 +166,7 @@ export function StillPhotoCapture({ onCapture, onCancel }: { onCapture: (file: F
         {phase !== 'review' && (
           <label className="block text-center text-white/50 text-xs font-bold underline underline-offset-2">
             {phase === 'error' ? 'Choose a photo instead' : 'Or choose a photo from your library'}
-            <input type="file" accept="image/*" capture="environment" onChange={handleFallbackFile} className="hidden" />
+            <input type="file" accept="image/*" capture={facing} onChange={handleFallbackFile} className="hidden" />
           </label>
         )}
       </div>

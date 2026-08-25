@@ -1,6 +1,7 @@
 import { Icon } from '@iconify/react'
 import { useNavigate } from 'react-router-dom'
 import { SweepStripes } from '../components/SweepStripes'
+import { Logo } from '../components/Logo'
 
 const STATS = [
   { icon: 'solar:wallet-money-bold', label: '70% payout' },
@@ -17,6 +18,9 @@ export function Splash() {
         <SweepStripes />
 
         <div className="relative">
+          <div className="w-16 h-16 rounded-3xl bg-white flex items-center justify-center mb-5 shadow-lg">
+            <Logo size={52} />
+          </div>
           <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-primary mb-6">
             Muncie Maids &middot; Cleaner Portal
           </p>

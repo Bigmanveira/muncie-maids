@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import type { OpsUser as ApiOpsUser } from '../lib/api'
+import { Logo } from '../components/Logo'
 
 export type OpsUser = ApiOpsUser
 
@@ -149,9 +150,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   if (status === 'loading') {
+    // Branded splash while the session resolves — matches the client app.
     return (
-      <div className="min-h-dvh bg-background flex items-center justify-center">
-        <div className="h-8 w-8 rounded-full border-2 border-secondary border-t-transparent animate-spin" />
+      <div className="min-h-dvh bg-background flex flex-col items-center justify-center gap-4">
+        <div className="animate-pulse">
+          <Logo size={96} />
+        </div>
+        <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-primary">Muncie Maids</p>
       </div>
     )
   }

@@ -193,7 +193,7 @@ export function Dashboard() {
                           >
                             <div className="min-w-0">
                               <p className="font-bold text-foreground text-sm truncate">
-                                {i === 0 && <Icon icon="solar:crown-bold" className="inline text-chart-4 mr-1" />}
+                                {i === 0 && <Icon icon="solar:star-bold" className="inline text-chart-4 mr-1" />}
                                 {r.name}
                               </p>
                               <p className="text-[10px] text-muted-foreground mt-0.5">

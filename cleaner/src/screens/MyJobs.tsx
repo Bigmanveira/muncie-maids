@@ -175,7 +175,7 @@ export function MyJobs() {
                 )}
                 {job.has_pets && (
                   <p className="flex items-center gap-1.5">
-                    <Icon icon="ph:dog-bold" /> Has pets
+                    <Icon icon="solar:paw-bold" /> Has pets
                   </p>
                 )}
               </div>

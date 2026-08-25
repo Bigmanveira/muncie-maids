@@ -11,6 +11,7 @@ import { Analytics } from './screens/Analytics'
 import { Bookings } from './screens/Bookings'
 import { Cleaners } from './screens/Cleaners'
 import { Payouts } from './screens/Payouts'
+import { Audit } from './screens/Audit'
 
 function Gate() {
   const { status } = useAuth()
@@ -26,6 +27,7 @@ function Gate() {
         <Route path="bookings" element={<Bookings />} />
         <Route path="cleaners" element={<Cleaners />} />
         <Route path="payouts" element={<Payouts />} />
+        <Route path="audit" element={<Audit />} />
       </Routes>
     </Shell>
   )

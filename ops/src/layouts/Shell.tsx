@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { Icon } from '@iconify/react'
 import { NavLink } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { Logo } from '../components/Logo'
 
 const NAV = [
   { path: '/', label: 'Dashboard', icon: 'solar:siren-linear' },
@@ -9,6 +10,7 @@ const NAV = [
   { path: '/bookings', label: 'Bookings', icon: 'solar:calendar-linear' },
   { path: '/cleaners', label: 'Cleaners', icon: 'solar:users-group-rounded-linear' },
   { path: '/payouts', label: 'Payouts', icon: 'solar:wallet-linear' },
+  { path: '/audit', label: 'Audit Log', icon: 'solar:clipboard-list-linear' },
 ] as const
 
 export function Shell({ children }: { children: ReactNode }) {
@@ -18,9 +20,14 @@ export function Shell({ children }: { children: ReactNode }) {
     <div className="min-h-dvh bg-background">
       <header className="bg-ink text-ink-foreground">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">Muncie Maids</p>
-            <h1 className="font-heading text-lg font-extrabold">Ops</h1>
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-2xl bg-white flex items-center justify-center shrink-0">
+              <Logo size={36} />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">Muncie Maids</p>
+              <h1 className="font-heading text-lg font-extrabold">Ops</h1>
+            </div>
           </div>
           <div className="flex items-center gap-3">
             <div className="text-right hidden sm:block">

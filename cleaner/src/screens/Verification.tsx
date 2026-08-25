@@ -119,7 +119,11 @@ export function Verification() {
       <SimpleHeader title="Verify Your Identity" fallback="/login" />
 
       {capturing && (
-        <StillPhotoCapture onCapture={(file) => void handleCapture(capturing, file)} onCancel={() => setCapturing(null)} />
+        <StillPhotoCapture
+          facing={capturing === 'profile_photo' ? 'user' : 'environment'}
+          onCapture={(file) => void handleCapture(capturing, file)}
+          onCancel={() => setCapturing(null)}
+        />
       )}
 
       <form onSubmit={handleSubmit} className="px-6 flex-1 flex flex-col max-w-md mx-auto w-full pb-8">
@@ -239,7 +243,7 @@ export function Verification() {
                 />
                 <TextField
                   id={`ref-rel-${i}`}
-                  label="How they know your work"
+                  label="Relationship"
                   value={ref.relationship}
                   onChange={(e) => setReference(i, { relationship: e.target.value })}
                   placeholder="Past cleaning client"

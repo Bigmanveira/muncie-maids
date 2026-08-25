@@ -5,6 +5,7 @@ import { TextField } from '../components/TextField'
 import { SweepStripes } from '../components/SweepStripes'
 import { AuthError, useAuth } from '../context/AuthContext'
 import { isValidEmail } from '../lib/validation'
+import { Logo } from '../components/Logo'
 
 export function Login() {
   const navigate = useNavigate()
@@ -59,6 +60,9 @@ export function Login() {
           >
             <Icon icon="solar:arrow-left-linear" className="text-xl text-ink-foreground" />
           </button>
+          <div className="w-14 h-14 rounded-2xl bg-white flex items-center justify-center mb-4 shadow-lg">
+            <Logo size={44} />
+          </div>
           <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-primary mb-2">Cleaner Portal</p>
           <h1 className="font-heading text-3xl font-extrabold text-ink-foreground">Welcome back</h1>
         </div>

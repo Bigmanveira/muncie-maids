@@ -211,6 +211,22 @@ export function addOpsUser(email: string) {
   return invoke<{ status: 'added' }>('ops-add-ops-user', { email })
 }
 
+export interface AuditEvent {
+  id: string
+  action: string
+  actorType: 'client' | 'cleaner' | 'ops' | 'system'
+  actorName: string | null
+  bookingId: string | null
+  bookingCustomer: string | null
+  bookingDate: string | null
+  bookingCity: string | null
+  createdAt: string
+}
+
+export function listEvents(before?: string) {
+  return invoke<{ events: AuditEvent[]; hasMore: boolean }>('ops-list-events', before ? { before } : {})
+}
+
 export interface WeeklyRevenuePoint {
   weekStart: string
   revenue: number

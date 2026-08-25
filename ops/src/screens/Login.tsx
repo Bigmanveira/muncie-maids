@@ -4,6 +4,7 @@ import { Icon } from '@iconify/react'
 import { TextField } from '../components/TextField'
 import { AuthError, useAuth } from '../context/AuthContext'
 import { isValidEmail } from '../lib/validation'
+import { Logo } from '../components/Logo'
 
 export function Login() {
   const navigate = useNavigate()
@@ -48,8 +49,9 @@ export function Login() {
   return (
     <div className="min-h-dvh bg-background flex flex-col items-center justify-center px-6">
       <div className="w-full max-w-sm">
-        <div className="text-center mb-8">
-          <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-primary mb-1">Muncie Maids</p>
+        <div className="text-center mb-8 flex flex-col items-center">
+          <Logo size={72} />
+          <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-primary mt-3 mb-1">Muncie Maids</p>
           <h1 className="font-heading text-2xl font-extrabold text-foreground">Ops Sign In</h1>
         </div>
 
