@@ -4,6 +4,12 @@ import { supabase } from '../lib/supabase'
 
 export type CleanerStatus = 'applied' | 'active' | 'declined' | 'deactivated'
 
+export interface ReferenceContact {
+  name: string
+  relationship: string
+  phone: string
+}
+
 export interface Cleaner {
   id: string
   name: string
@@ -17,6 +23,11 @@ export interface Cleaner {
   agreementSignedAt: string | null
   reliabilityCompleted: number
   reliabilityReleased: number
+  // Verification step (0009): identity + trust data collected before approval
+  verificationSubmittedAt: string | null
+  idDocumentPath: string | null
+  profilePhotoPath: string | null
+  bgCheckConsentedAt: string | null
 }
 
 export interface SignupInput {
@@ -31,6 +42,20 @@ export interface ApplicationInput {
   services: string[]
   yearsExperience: number
   hasOwnEquipment: boolean
+}
+
+export interface VerificationInput {
+  legalName: string
+  dateOfBirth: string // YYYY-MM-DD
+  addressLine1: string
+  addressCity: string
+  addressState: string
+  addressZip: string
+  hasTransportation: boolean
+  hasDriversLicense: boolean
+  emergencyContactName: string
+  emergencyContactPhone: string
+  references: ReferenceContact[]
 }
 
 export type AuthErrorCode = 'EMAIL_TAKEN' | 'EMAIL_NOT_CONFIRMED' | 'INVALID_CREDENTIALS' | 'UNKNOWN'
@@ -53,6 +78,8 @@ interface AuthContextValue {
   requestPasswordReset: (email: string) => Promise<void>
   confirmPasswordReset: (newPassword: string) => Promise<void>
   submitApplication: (input: ApplicationInput) => Promise<void>
+  submitVerification: (input: VerificationInput) => Promise<void>
+  refreshCleaner: () => Promise<void>
   signAgreement: () => Promise<void>
 }
 
@@ -77,6 +104,10 @@ interface CleanerRow {
   agreement_signed_at: string | null
   reliability_completed: number
   reliability_released: number
+  verification_submitted_at: string | null
+  id_document_path: string | null
+  profile_photo_path: string | null
+  bg_check_consented_at: string | null
 }
 
 function rowToCleaner(row: CleanerRow): Cleaner {
@@ -93,6 +124,10 @@ function rowToCleaner(row: CleanerRow): Cleaner {
     agreementSignedAt: row.agreement_signed_at,
     reliabilityCompleted: row.reliability_completed,
     reliabilityReleased: row.reliability_released,
+    verificationSubmittedAt: row.verification_submitted_at,
+    idDocumentPath: row.id_document_path,
+    profilePhotoPath: row.profile_photo_path,
+    bgCheckConsentedAt: row.bg_check_consented_at,
   }
 }
 
@@ -203,6 +238,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
   }
 
+  async function submitVerification(input: VerificationInput) {
+    if (!cleaner) throw new AuthError('UNKNOWN', 'You must be signed in.')
+    const now = new Date().toISOString()
+    const { error } = await supabase
+      .from('cleaners')
+      .update({
+        legal_name: input.legalName,
+        date_of_birth: input.dateOfBirth,
+        address_line1: input.addressLine1,
+        address_city: input.addressCity,
+        address_state: input.addressState,
+        address_zip: input.addressZip,
+        has_transportation: input.hasTransportation,
+        has_drivers_license: input.hasDriversLicense,
+        emergency_contact_name: input.emergencyContactName,
+        emergency_contact_phone: input.emergencyContactPhone,
+        reference_contacts: input.references,
+        // Submitting this step IS the attestation + FCRA authorization — the
+        // screen requires both checkboxes before the button enables.
+        work_eligible_attested_at: now,
+        bg_check_consented_at: now,
+        verification_submitted_at: now,
+      })
+      .eq('id', cleaner.id)
+    if (error) throw new AuthError('UNKNOWN', error.message)
+    await refreshCleaner()
+  }
+
+  // Re-reads the row — needed after edge functions write columns the client
+  // can't (document paths), so the Gate sees fresh state.
+  async function refreshCleaner() {
+    const { data } = await supabase.auth.getSession()
+    if (data.session?.user) setCleaner(await loadCleaner(data.session.user))
+  }
+
   async function signAgreement() {
     if (!cleaner) throw new AuthError('UNKNOWN', 'You must be signed in to sign the agreement.')
     const now = new Date().toISOString()
@@ -231,6 +301,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         requestPasswordReset,
         confirmPasswordReset,
         submitApplication,
+        submitVerification,
+        refreshCleaner,
         signAgreement,
       }}
     >

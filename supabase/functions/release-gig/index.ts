@@ -2,6 +2,7 @@ import { corsHeaders, errorResponse, jsonResponse } from '../_shared/cors.ts'
 import { getSupabaseAdmin } from '../_shared/supabaseAdmin.ts'
 import { getAuthedCleaner } from '../_shared/cleanerAuth.ts'
 import { timeWindowStartHour } from '../_shared/timeWindows.ts'
+import { autoOfferBest } from '../_shared/allocation.ts'
 
 // Releasing inside 48h of the visit is penalty-free to the client (the gig
 // just goes back to OPEN) but counts against the cleaner's reliability and
@@ -65,6 +66,14 @@ Deno.serve(async (req) => {
     actor_id: cleaner.id,
     action: insideAlertWindow ? 'released_inside_48h' : 'released',
   })
+
+  // The released gig needs a new cleaner — auto-offer the best match right
+  // away (especially valuable inside the 48h window). Best-effort.
+  try {
+    await autoOfferBest(supabase, booking.id)
+  } catch (err) {
+    console.error('auto-offer after release failed for booking', booking.id, err)
+  }
 
   return jsonResponse({ status: 'released', opsAlerted: insideAlertWindow })
 })

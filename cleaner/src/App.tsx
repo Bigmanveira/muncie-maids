@@ -7,6 +7,7 @@ import { Signup } from './screens/Signup'
 import { ForgotPassword } from './screens/ForgotPassword'
 import { ResetPassword } from './screens/ResetPassword'
 import { Application } from './screens/Application'
+import { Verification } from './screens/Verification'
 import { Agreement } from './screens/Agreement'
 import { Pending } from './screens/Pending'
 import { GigFeed } from './screens/GigFeed'
@@ -20,6 +21,7 @@ function Gate() {
 
   if (!cleaner) return <Splash />
   if (cleaner.towns.length === 0) return <Application />
+  if (!cleaner.verificationSubmittedAt) return <Verification />
   if (!cleaner.agreementSignedAt) return <Agreement />
   if (cleaner.status !== 'active') return <Pending status={cleaner.status} />
 

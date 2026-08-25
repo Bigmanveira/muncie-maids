@@ -4,7 +4,7 @@ import { TopBar } from '../components/TopBar'
 import { supabase } from '../lib/supabase'
 import { ApiError, completeGig, releaseGig } from '../lib/api'
 import { CLEAN_TYPE_ACCENT, CLEAN_TYPE_LABEL, formatBathrooms, formatBedrooms, formatDateShort, formatPrice } from '../lib/format'
-import { mapsUrl } from '../lib/maps'
+import { directionsUrl, mapsUrl } from '../lib/maps'
 import { StillPhotoCapture } from '../components/StillPhotoCapture'
 import { PhotoUploadError, uploadJobPhoto } from '../lib/photos'
 
@@ -184,6 +184,17 @@ export function MyJobs() {
                 <div className="rounded-full bg-chart-3/10 text-chart-3 font-bold text-sm py-3 text-center">Completed</div>
               ) : (
                 <>
+                  {/* One-tap turn-by-turn: opens the phone's native maps app
+                      already navigating to the job address. */}
+                  <a
+                    href={directionsUrl(job.address_line, job.city, job.zip)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 w-full bg-secondary text-white font-bold py-3 rounded-full shadow-sm active:scale-[0.98] transition-all mb-3"
+                  >
+                    <Icon icon="solar:route-bold" className="text-lg" />
+                    Navigate to Job
+                  </a>
                   <ProofPhoto
                     jobId={job.id}
                     photoCount={photoCounts[job.id] ?? 0}

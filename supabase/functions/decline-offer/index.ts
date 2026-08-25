@@ -1,6 +1,7 @@
 import { corsHeaders, errorResponse, jsonResponse } from '../_shared/cors.ts'
 import { getSupabaseAdmin } from '../_shared/supabaseAdmin.ts'
 import { getAuthedCleaner } from '../_shared/cleanerAuth.ts'
+import { autoOfferBest } from '../_shared/allocation.ts'
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders })
@@ -37,6 +38,16 @@ Deno.serve(async (req) => {
     actor_id: cleaner.id,
     action: 'offer_declined',
   })
+
+  // Cascade: offer the gig to the next-best cleaner. The allocation engine
+  // excludes everyone who already declined this booking (the event above is
+  // written first, so this decliner is excluded too). Best-effort — if no
+  // one is eligible the gig is simply back in the open feed.
+  try {
+    await autoOfferBest(supabase, declined.id)
+  } catch (err) {
+    console.error('auto-offer cascade failed for booking', declined.id, err)
+  }
 
   return jsonResponse({ status: 'declined' })
 })

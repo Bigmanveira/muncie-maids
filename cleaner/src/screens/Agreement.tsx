@@ -62,7 +62,18 @@ export function Agreement() {
           </p>
         </section>
         <section>
-          <h2>6. Termination</h2>
+          <h2>6. Client privacy &amp; home security</h2>
+          <p>
+            You're a guest in clients' homes. Keep everything you see or learn there confidential: entry codes,
+            key locations, alarm codes, schedules, valuables, and personal circumstances. Never share, write down
+            outside the app, or reuse a client's entry information; never photograph the inside of a home except
+            the before/after documentation photos taken through this app; and never post about a client, their
+            home, or their belongings on social media. Report a lost key or a compromised entry code to us
+            immediately.
+          </p>
+        </section>
+        <section>
+          <h2>7. Termination</h2>
           <p>Either party may end this arrangement at any time, for any reason.</p>
         </section>
       </LegalPage>

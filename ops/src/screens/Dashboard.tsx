@@ -2,12 +2,15 @@ import { useEffect, useState } from 'react'
 import { Icon } from '@iconify/react'
 import {
   ApiError,
+  autoOffer,
   cancelBooking,
   getDashboard,
   listCleaners,
   offerGig,
+  rankCleaners,
   type DashboardData,
   type OpsCleaner,
+  type RankedCleaner,
 } from '../lib/api'
 import { formatDateShort, formatPrice, formatDateTime } from '../lib/format'
 
@@ -19,6 +22,8 @@ export function Dashboard() {
   const [busyId, setBusyId] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const [offering, setOffering] = useState<string | null>(null)
+  const [ranking, setRanking] = useState<RankedCleaner[] | null>(null)
+  const [autoOfferNote, setAutoOfferNote] = useState<string | null>(null)
 
   async function refresh() {
     setLoad({ status: 'loading' })
@@ -41,11 +46,38 @@ export function Dashboard() {
     try {
       await offerGig(bookingId, cleanerId)
       setOffering(null)
+      setRanking(null)
       await refresh()
     } catch (err) {
       setActionError(err instanceof ApiError ? err.message : 'Could not send that offer.')
     } finally {
       setBusyId(null)
+    }
+  }
+
+  async function handleAutoOffer(bookingId: string) {
+    setBusyId(bookingId)
+    setActionError(null)
+    setAutoOfferNote(null)
+    try {
+      const { cleaner } = await autoOffer(bookingId)
+      setAutoOfferNote(`Offered to ${cleaner.name} (match score ${cleaner.score}/100).`)
+      await refresh()
+    } catch (err) {
+      setActionError(err instanceof ApiError ? err.message : 'Could not auto-offer that gig.')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  async function openManualOffer(bookingId: string) {
+    setOffering(bookingId)
+    setRanking(null)
+    try {
+      const { ranked } = await rankCleaners(bookingId)
+      setRanking(ranked)
+    } catch {
+      setRanking([]) // ranking is a nicety — the plain dropdown still works
     }
   }
 
@@ -138,7 +170,43 @@ export function Dashboard() {
                     <Icon icon="solar:bell-bold" /> Offer already sent — awaiting response
                   </p>
                 )}
+                {autoOfferNote && offering !== gig.id && (
+                  <p className="text-xs font-bold text-chart-3 mb-3 flex items-center gap-1">
+                    <Icon icon="solar:check-circle-bold" /> {autoOfferNote}
+                  </p>
+                )}
                 {offering === gig.id ? (
+                  <div className="space-y-3">
+                    {/* Allocation-engine suggestions: ranked matches with the
+                        factor breakdown, one tap to offer. */}
+                    {ranking === null ? (
+                      <p className="text-xs text-muted-foreground">Ranking cleaners…</p>
+                    ) : ranking.length > 0 ? (
+                      <div className="space-y-2">
+                        {ranking.slice(0, 3).map((r, i) => (
+                          <button
+                            key={r.cleanerId}
+                            type="button"
+                            onClick={() => handleOffer(gig.id, r.cleanerId)}
+                            disabled={busyId === gig.id}
+                            className="w-full flex items-center justify-between gap-3 bg-background border border-border rounded-2xl px-4 py-3 text-left disabled:opacity-50 hover:border-secondary/40 transition-colors"
+                          >
+                            <div className="min-w-0">
+                              <p className="font-bold text-foreground text-sm truncate">
+                                {i === 0 && <Icon icon="solar:crown-bold" className="inline text-chart-4 mr-1" />}
+                                {r.name}
+                              </p>
+                              <p className="text-[10px] text-muted-foreground mt-0.5">
+                                reliability {r.factors.reliability}/30 · near {r.factors.proximity}/20 · load {r.factors.fairness}/20 · exp {r.factors.experience}/15
+                              </p>
+                            </div>
+                            <span className="font-mono font-extrabold text-secondary shrink-0">{r.total}</span>
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">No engine matches — pick manually below.</p>
+                    )}
                   <div className="flex flex-wrap gap-2 items-center">
                     <select
                       id={`offer-${gig.id}`}
@@ -167,18 +235,27 @@ export function Dashboard() {
                     >
                       Send Offer
                     </button>
-                    <button type="button" onClick={() => setOffering(null)} className="text-sm font-bold text-muted-foreground px-2">
+                    <button type="button" onClick={() => { setOffering(null); setRanking(null) }} className="text-sm font-bold text-muted-foreground px-2">
                       Cancel
                     </button>
+                  </div>
                   </div>
                 ) : (
                   <div className="flex gap-3">
                     <button
                       type="button"
-                      onClick={() => setOffering(gig.id)}
+                      onClick={() => handleAutoOffer(gig.id)}
+                      disabled={busyId === gig.id || gig.hasOffer}
+                      className="flex-1 bg-primary text-white font-bold py-2.5 rounded-full text-sm shadow-sm active:scale-[0.98] transition-all disabled:opacity-50"
+                    >
+                      {busyId === gig.id ? 'Matching…' : 'Offer Best Match'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openManualOffer(gig.id)}
                       className="flex-1 bg-secondary text-white font-bold py-2.5 rounded-full text-sm shadow-sm active:scale-[0.98] transition-all"
                     >
-                      Offer to a Cleaner
+                      Pick a Cleaner
                     </button>
                     <button
                       type="button"

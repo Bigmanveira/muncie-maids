@@ -1,6 +1,6 @@
-const STEPS = ['Application', 'Agreement', 'Review'] as const
+const STEPS = ['Application', 'Verification', 'Agreement', 'Review'] as const
 
-export function OnboardingSteps({ current }: { current: 0 | 1 | 2 }) {
+export function OnboardingSteps({ current }: { current: 0 | 1 | 2 | 3 }) {
   return (
     <div className="flex items-center gap-2 mb-8">
       {STEPS.map((step, i) => (

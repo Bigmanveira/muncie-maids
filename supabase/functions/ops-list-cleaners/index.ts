@@ -32,6 +32,29 @@ Deno.serve(async (req) => {
       reliabilityCompleted: c.reliability_completed,
       reliabilityReleased: c.reliability_released,
       createdAt: c.created_at,
+      // Vetting (0009). Document paths are intentionally mapped to booleans —
+      // ops views the actual files via short-lived signed URLs from
+      // ops-get-cleaner-docs, so raw storage paths never leave the server.
+      legalName: c.legal_name,
+      dateOfBirth: c.date_of_birth,
+      addressLine1: c.address_line1,
+      addressCity: c.address_city,
+      addressState: c.address_state,
+      addressZip: c.address_zip,
+      hasTransportation: c.has_transportation,
+      hasDriversLicense: c.has_drivers_license,
+      workEligibleAttestedAt: c.work_eligible_attested_at,
+      emergencyContactName: c.emergency_contact_name,
+      emergencyContactPhone: c.emergency_contact_phone,
+      referenceContacts: c.reference_contacts ?? [],
+      hasIdDocument: Boolean(c.id_document_path),
+      hasProfilePhoto: Boolean(c.profile_photo_path),
+      bgCheckConsentedAt: c.bg_check_consented_at,
+      bgCheckStatus: c.bg_check_status,
+      bgCheckProvider: c.bg_check_provider,
+      bgCheckReference: c.bg_check_reference,
+      bgCheckCompletedAt: c.bg_check_completed_at,
+      verificationSubmittedAt: c.verification_submitted_at,
     })),
   })
 })

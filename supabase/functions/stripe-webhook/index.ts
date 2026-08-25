@@ -1,5 +1,6 @@
 import Stripe from 'npm:stripe@17.5.0'
 import { getSupabaseAdmin } from '../_shared/supabaseAdmin.ts'
+import { autoOfferBest } from '../_shared/allocation.ts'
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') ?? '', { apiVersion: '2024-12-18.acacia' })
 
@@ -29,6 +30,14 @@ Deno.serve(async (req) => {
 
     if (bookingId) {
       await supabase.from('bookings').update({ status: 'open' }).eq('id', bookingId)
+      // Auto-offer the freshly opened gig to the best-matched cleaner.
+      // Best-effort: a failure here must never fail the payment webhook —
+      // the gig is already in the open feed either way.
+      try {
+        await autoOfferBest(supabase, bookingId)
+      } catch (err) {
+        console.error('auto-offer failed for booking', bookingId, err)
+      }
       // TODO: trigger confirmation SMS/email here once Twilio/email is wired up (out of scope for M1).
     }
   }
