@@ -1,11 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Icon } from '@iconify/react'
-import { listEvents, type AuditEvent } from '../lib/api'
+import { listEvents, type AuditEvent, type ListEventsParams } from '../lib/api'
 import { formatDateShort, formatDateTime } from '../lib/format'
 
 // Audit log — a readable, filterable view over the events table. Every
 // consequential action in the marketplace lands here: bookings, offers,
 // claims, releases, approvals, background checks, document uploads.
+// Filters (actor + date range) and pagination run server-side.
 
 const ACTION_META: Record<string, { icon: string; label: string; tone: 'good' | 'warn' | 'bad' | 'neutral' }> = {
   claimed: { icon: 'solar:hand-shake-linear', label: 'claimed a gig', tone: 'good' },
@@ -45,66 +46,46 @@ const ACTOR_LABEL: Record<AuditEvent['actorType'], string> = {
   system: 'System',
 }
 
-const FILTERS = ['all', 'cleaner', 'ops', 'system', 'client'] as const
+const ACTOR_FILTERS = ['all', 'cleaner', 'ops', 'system', 'client'] as const
+type ActorFilter = (typeof ACTOR_FILTERS)[number]
 
 type LoadState =
   | { status: 'loading' }
   | { status: 'error'; message: string }
-  | { status: 'ready'; events: AuditEvent[]; hasMore: boolean }
+  | { status: 'ready'; events: AuditEvent[]; total: number; pageSize: number }
 
 export function Audit() {
   const [load, setLoad] = useState<LoadState>({ status: 'loading' })
-  const [filter, setFilter] = useState<(typeof FILTERS)[number]>('all')
-  const [loadingMore, setLoadingMore] = useState(false)
+  const [actorFilter, setActorFilter] = useState<ActorFilter>('all')
+  const [fromDate, setFromDate] = useState('')
+  const [toDate, setToDate] = useState('')
+  const [page, setPage] = useState(0)
 
-  async function refresh() {
+  const fetchPage = useCallback(async () => {
     setLoad({ status: 'loading' })
     try {
-      const { events, hasMore } = await listEvents()
-      setLoad({ status: 'ready', events, hasMore })
+      const params: ListEventsParams = { page }
+      if (actorFilter !== 'all') params.actorType = actorFilter
+      if (fromDate) params.from = fromDate
+      if (toDate) params.to = toDate
+      const { events, total, pageSize } = await listEvents(params)
+      setLoad({ status: 'ready', events, total, pageSize })
     } catch (err) {
       setLoad({ status: 'error', message: err instanceof Error ? err.message : 'Could not load the audit log.' })
     }
-  }
+  }, [page, actorFilter, fromDate, toDate])
 
   useEffect(() => {
-    refresh()
-  }, [])
+    fetchPage()
+  }, [fetchPage])
 
-  async function loadMore() {
-    if (load.status !== 'ready' || load.events.length === 0) return
-    setLoadingMore(true)
-    try {
-      const oldest = load.events[load.events.length - 1].createdAt
-      const { events, hasMore } = await listEvents(oldest)
-      setLoad({ status: 'ready', events: [...load.events, ...events], hasMore })
-    } catch {
-      // Keep what we have — the button stays available to retry.
-    } finally {
-      setLoadingMore(false)
-    }
+  // Any filter change resets to the first page.
+  function applyFilter(update: () => void) {
+    update()
+    setPage(0)
   }
 
-  if (load.status === 'loading') {
-    return (
-      <div className="flex justify-center py-24">
-        <div className="h-8 w-8 rounded-full border-2 border-secondary border-t-transparent animate-spin" />
-      </div>
-    )
-  }
-
-  if (load.status === 'error') {
-    return (
-      <div className="bg-destructive/5 border border-destructive/20 rounded-2xl p-6 space-y-4 max-w-md">
-        <p className="text-sm text-foreground font-medium">{load.message}</p>
-        <button type="button" onClick={refresh} className="bg-card border border-border font-bold text-foreground px-4 py-2 rounded-full shadow-sm">
-          Try again
-        </button>
-      </div>
-    )
-  }
-
-  const shown = filter === 'all' ? load.events : load.events.filter((e) => e.actorType === filter)
+  const filtersActive = actorFilter !== 'all' || fromDate !== '' || toDate !== ''
 
   return (
     <div className="space-y-6">
@@ -113,62 +94,155 @@ export function Audit() {
         <p className="text-muted-foreground text-sm mt-1">Every action across bookings, cleaners, and reviews — newest first.</p>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        {FILTERS.map((f) => (
-          <button
-            key={f}
-            type="button"
-            onClick={() => setFilter(f)}
-            className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-colors ${
-              filter === f ? 'bg-ink text-ink-foreground' : 'bg-card border border-border text-muted-foreground'
-            }`}
-          >
-            {f === 'all' ? 'All' : ACTOR_LABEL[f]}
-          </button>
-        ))}
+      {/* Filter bar: actor chips + date range */}
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
+        <div className="flex flex-wrap gap-2">
+          {ACTOR_FILTERS.map((f) => (
+            <button
+              key={f}
+              type="button"
+              onClick={() => applyFilter(() => setActorFilter(f))}
+              className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-colors ${
+                actorFilter === f ? 'bg-ink text-ink-foreground' : 'bg-card border border-border text-muted-foreground'
+              }`}
+            >
+              {f === 'all' ? 'All' : ACTOR_LABEL[f]}
+            </button>
+          ))}
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground">
+            From
+            <input
+              type="date"
+              value={fromDate}
+              max={toDate || undefined}
+              onChange={(e) => applyFilter(() => setFromDate(e.target.value))}
+              className="border border-border rounded-full px-3 py-1.5 text-xs bg-card text-foreground"
+            />
+          </label>
+          <label className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground">
+            To
+            <input
+              type="date"
+              value={toDate}
+              min={fromDate || undefined}
+              onChange={(e) => applyFilter(() => setToDate(e.target.value))}
+              className="border border-border rounded-full px-3 py-1.5 text-xs bg-card text-foreground"
+            />
+          </label>
+          {filtersActive && (
+            <button
+              type="button"
+              onClick={() => applyFilter(() => { setActorFilter('all'); setFromDate(''); setToDate('') })}
+              className="flex items-center gap-1 text-xs font-bold text-secondary"
+            >
+              <Icon icon="solar:close-circle-linear" /> Clear
+            </button>
+          )}
+        </div>
       </div>
 
-      {shown.length === 0 ? (
-        <p className="text-sm text-muted-foreground py-8">No events yet for this filter.</p>
-      ) : (
-        <div className="space-y-2">
-          {shown.map((e) => {
-            const meta = ACTION_META[e.action] ?? { icon: 'solar:record-circle-linear', label: e.action.replaceAll('_', ' '), tone: 'neutral' as const }
-            return (
-              <div key={e.id} className="bg-card border border-border rounded-2xl px-4 py-3 shadow-sm flex items-start gap-3">
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${TONE_CLASS[meta.tone]}`}>
-                  <Icon icon={meta.icon} className="text-lg" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm text-foreground leading-snug">
-                    <span className="font-bold">{e.actorName ?? ACTOR_LABEL[e.actorType]}</span>{' '}
-                    <span className="text-muted-foreground font-medium">({ACTOR_LABEL[e.actorType]})</span> {meta.label}
-                    {e.bookingCustomer && (
-                      <span className="text-muted-foreground">
-                        {' '}— {e.bookingCustomer}
-                        {e.bookingDate ? `, ${formatDateShort(e.bookingDate)}` : ''}
-                        {e.bookingCity ? ` · ${e.bookingCity}` : ''}
-                      </span>
-                    )}
-                  </p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">{formatDateTime(e.createdAt)}</p>
-                </div>
-              </div>
-            )
-          })}
+      {load.status === 'loading' && (
+        <div className="flex justify-center py-24">
+          <div className="h-8 w-8 rounded-full border-2 border-secondary border-t-transparent animate-spin" />
         </div>
       )}
 
-      {load.hasMore && filter === 'all' && (
+      {load.status === 'error' && (
+        <div className="bg-destructive/5 border border-destructive/20 rounded-2xl p-6 space-y-4 max-w-md">
+          <p className="text-sm text-foreground font-medium">{load.message}</p>
+          <button type="button" onClick={fetchPage} className="bg-card border border-border font-bold text-foreground px-4 py-2 rounded-full shadow-sm">
+            Try again
+          </button>
+        </div>
+      )}
+
+      {load.status === 'ready' && (
+        <>
+          {load.events.length === 0 ? (
+            <div className="flex flex-col items-center text-center gap-3 py-16">
+              <Icon icon="solar:clipboard-list-linear" className="text-muted-foreground text-4xl" />
+              <p className="text-sm text-muted-foreground max-w-xs">
+                {filtersActive ? 'No events match these filters — widen the date range or clear them.' : 'No events yet.'}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {load.events.map((e) => {
+                const meta = ACTION_META[e.action] ?? { icon: 'solar:record-circle-linear', label: e.action.replaceAll('_', ' '), tone: 'neutral' as const }
+                return (
+                  <div key={e.id} className="bg-card border border-border rounded-2xl px-4 py-3 shadow-sm flex items-start gap-3">
+                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${TONE_CLASS[meta.tone]}`}>
+                      <Icon icon={meta.icon} className="text-lg" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm text-foreground leading-snug">
+                        <span className="font-bold">{e.actorName ?? ACTOR_LABEL[e.actorType]}</span>{' '}
+                        <span className="text-muted-foreground font-medium">({ACTOR_LABEL[e.actorType]})</span> {meta.label}
+                        {e.bookingCustomer && (
+                          <span className="text-muted-foreground">
+                            {' '}— {e.bookingCustomer}
+                            {e.bookingDate ? `, ${formatDateShort(e.bookingDate)}` : ''}
+                            {e.bookingCity ? ` · ${e.bookingCity}` : ''}
+                          </span>
+                        )}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">{formatDateTime(e.createdAt)}</p>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
+          <Pagination
+            page={page}
+            total={load.total}
+            pageSize={load.pageSize}
+            onPage={setPage}
+          />
+        </>
+      )}
+    </div>
+  )
+}
+
+function Pagination({ page, total, pageSize, onPage }: { page: number; total: number; pageSize: number; onPage: (p: number) => void }) {
+  const totalPages = Math.max(1, Math.ceil(total / pageSize))
+  if (totalPages <= 1) return null
+
+  const first = page * pageSize + 1
+  const last = Math.min((page + 1) * pageSize, total)
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+      <p className="text-xs text-muted-foreground font-medium">
+        {first}–{last} of {total} events
+      </p>
+      <div className="flex items-center gap-2">
         <button
           type="button"
-          onClick={loadMore}
-          disabled={loadingMore}
-          className="w-full sm:w-auto bg-card border border-border font-bold text-foreground px-6 py-2.5 rounded-full text-sm shadow-sm disabled:opacity-50"
+          onClick={() => onPage(page - 1)}
+          disabled={page === 0}
+          aria-label="Previous page"
+          className="w-9 h-9 rounded-full bg-card border border-border flex items-center justify-center text-foreground disabled:opacity-40"
         >
-          {loadingMore ? 'Loading…' : 'Load older events'}
+          <Icon icon="solar:alt-arrow-left-linear" />
         </button>
-      )}
+        <span className="text-xs font-bold text-foreground px-1">
+          Page {page + 1} of {totalPages}
+        </span>
+        <button
+          type="button"
+          onClick={() => onPage(page + 1)}
+          disabled={page + 1 >= totalPages}
+          aria-label="Next page"
+          className="w-9 h-9 rounded-full bg-card border border-border flex items-center justify-center text-foreground disabled:opacity-40"
+        >
+          <Icon icon="solar:alt-arrow-right-linear" />
+        </button>
+      </div>
     </div>
   )
 }

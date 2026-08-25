@@ -4,10 +4,12 @@ import { getAuthedOps } from '../_shared/opsAuth.ts'
 
 // Audit log for the ops portal: the events table is the system of record for
 // every actor-visible action (claims, offers, approvals, background checks,
-// document uploads, releases, cancellations...). This returns a page of
-// events enriched with actor names and booking context. Cursor-paged via
-// `before` (an ISO timestamp) for "load older".
-const PAGE_SIZE = 60
+// document uploads, releases, cancellations...). Offset-paged with an exact
+// total so the UI can render real page controls, plus server-side date-range
+// and actor-type filters.
+const PAGE_SIZE = 30
+
+const ACTOR_TYPES = ['client', 'cleaner', 'ops', 'system'] as const
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders })
@@ -16,23 +18,34 @@ Deno.serve(async (req) => {
   const ops = await getAuthedOps(req)
   if (!ops) return errorResponse('UNAUTHORIZED', 'Sign in required.', 401)
 
-  let body: { before?: string }
+  let body: { page?: number; from?: string; to?: string; actorType?: string }
   try {
     body = await req.json()
   } catch {
     body = {}
   }
 
+  const page = Math.max(0, Math.floor(Number(body.page) || 0))
   const supabase = getSupabaseAdmin()
 
   let query = supabase
     .from('events')
-    .select('id, booking_id, actor_type, actor_id, action, created_at')
+    .select('id, booking_id, actor_type, actor_id, action, created_at', { count: 'exact' })
     .order('created_at', { ascending: false })
-    .limit(PAGE_SIZE)
-  if (body.before) query = query.lt('created_at', body.before)
+    .range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1)
 
-  const { data: events, error } = await query
+  // Date filters arrive as YYYY-MM-DD; `to` is inclusive of the whole day.
+  if (body.from && /^\d{4}-\d{2}-\d{2}$/.test(body.from)) {
+    query = query.gte('created_at', `${body.from}T00:00:00.000Z`)
+  }
+  if (body.to && /^\d{4}-\d{2}-\d{2}$/.test(body.to)) {
+    query = query.lte('created_at', `${body.to}T23:59:59.999Z`)
+  }
+  if (body.actorType && (ACTOR_TYPES as readonly string[]).includes(body.actorType)) {
+    query = query.eq('actor_type', body.actorType)
+  }
+
+  const { data: events, count, error } = await query
   if (error) return errorResponse('UNKNOWN', 'Could not load the audit log', 500)
 
   // Batch-resolve actor names and booking summaries.
@@ -76,5 +89,5 @@ Deno.serve(async (req) => {
     }
   })
 
-  return jsonResponse({ events: enriched, hasMore: (events ?? []).length === PAGE_SIZE })
+  return jsonResponse({ events: enriched, total: count ?? 0, page, pageSize: PAGE_SIZE })
 })

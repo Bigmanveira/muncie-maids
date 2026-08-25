@@ -223,8 +223,15 @@ export interface AuditEvent {
   createdAt: string
 }
 
-export function listEvents(before?: string) {
-  return invoke<{ events: AuditEvent[]; hasMore: boolean }>('ops-list-events', before ? { before } : {})
+export interface ListEventsParams {
+  page?: number
+  from?: string // YYYY-MM-DD
+  to?: string // YYYY-MM-DD (inclusive)
+  actorType?: 'client' | 'cleaner' | 'ops' | 'system'
+}
+
+export function listEvents(params: ListEventsParams = {}) {
+  return invoke<{ events: AuditEvent[]; total: number; page: number; pageSize: number }>('ops-list-events', params)
 }
 
 export interface WeeklyRevenuePoint {
