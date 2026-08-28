@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Icon } from '@iconify/react'
 import { listEvents, type AuditEvent, type ListEventsParams } from '../lib/api'
 import { formatDateShort, formatDateTime } from '../lib/format'
+import { supabase } from '../lib/supabase'
 
 // Audit log — a readable, filterable view over the events table. Every
 // consequential action in the marketplace lands here: bookings, offers,
@@ -60,9 +61,12 @@ export function Audit() {
   const [fromDate, setFromDate] = useState('')
   const [toDate, setToDate] = useState('')
   const [page, setPage] = useState(0)
+  const [live, setLive] = useState(false)
 
-  const fetchPage = useCallback(async () => {
-    setLoad({ status: 'loading' })
+  // `silent` refreshes swap the data in place without flashing the spinner —
+  // used by the realtime subscription so the list updates unobtrusively.
+  const fetchPage = useCallback(async (silent = false) => {
+    if (!silent) setLoad({ status: 'loading' })
     try {
       const params: ListEventsParams = { page }
       if (actorFilter !== 'all') params.actorType = actorFilter
@@ -71,13 +75,44 @@ export function Audit() {
       const { events, total, pageSize } = await listEvents(params)
       setLoad({ status: 'ready', events, total, pageSize })
     } catch (err) {
-      setLoad({ status: 'error', message: err instanceof Error ? err.message : 'Could not load the audit log.' })
+      if (!silent) {
+        setLoad({ status: 'error', message: err instanceof Error ? err.message : 'Could not load the audit log.' })
+      }
+      // Silent failures keep the current list; the next event or page
+      // change will try again.
     }
   }, [page, actorFilter, fromDate, toDate])
 
   useEffect(() => {
     fetchPage()
   }, [fetchPage])
+
+  // Live updates: subscribe to event INSERTs (RLS-gated to ops users) and
+  // re-run the CURRENT query — filters and page respected — with a short
+  // debounce so bursts (e.g. an auto-offer cascade) coalesce into one fetch.
+  const fetchPageRef = useRef(fetchPage)
+  fetchPageRef.current = fetchPage
+  useEffect(() => {
+    let debounce: ReturnType<typeof setTimeout> | undefined
+    const channel = supabase
+      .channel('audit-events')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'events' }, () => {
+        if (debounce) clearTimeout(debounce)
+        debounce = setTimeout(() => void fetchPageRef.current(true), 500)
+      })
+      .subscribe((status) => setLive(status === 'SUBSCRIBED'))
+
+    // Realtime can drop while a laptop sleeps — refresh whenever the tab
+    // regains focus so the log is never stale after coming back.
+    const onFocus = () => void fetchPageRef.current(true)
+    window.addEventListener('focus', onFocus)
+
+    return () => {
+      if (debounce) clearTimeout(debounce)
+      window.removeEventListener('focus', onFocus)
+      void supabase.removeChannel(channel)
+    }
+  }, [])
 
   // Any filter change resets to the first page.
   function applyFilter(update: () => void) {
@@ -89,9 +124,19 @@ export function Audit() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="font-heading text-2xl font-extrabold text-foreground">Audit Log</h2>
-        <p className="text-muted-foreground text-sm mt-1">Every action across bookings, cleaners, and reviews — newest first.</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="font-heading text-2xl font-extrabold text-foreground">Audit Log</h2>
+          <p className="text-muted-foreground text-sm mt-1">Every action across bookings, cleaners, and reviews — newest first.</p>
+        </div>
+        <span
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold ${
+            live ? 'bg-chart-3/10 text-chart-3' : 'bg-muted text-muted-foreground'
+          }`}
+        >
+          <span className={`w-1.5 h-1.5 rounded-full ${live ? 'bg-chart-3' : 'bg-muted-foreground/50'}`} />
+          {live ? 'Live' : 'Connecting…'}
+        </span>
       </div>
 
       {/* Filter bar: actor chips + date range */}
@@ -152,7 +197,7 @@ export function Audit() {
       {load.status === 'error' && (
         <div className="bg-destructive/5 border border-destructive/20 rounded-2xl p-6 space-y-4 max-w-md">
           <p className="text-sm text-foreground font-medium">{load.message}</p>
-          <button type="button" onClick={fetchPage} className="bg-card border border-border font-bold text-foreground px-4 py-2 rounded-full shadow-sm">
+          <button type="button" onClick={() => fetchPage()} className="bg-card border border-border font-bold text-foreground px-4 py-2 rounded-full shadow-sm">
             Try again
           </button>
         </div>
