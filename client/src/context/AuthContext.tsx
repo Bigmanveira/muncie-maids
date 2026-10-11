@@ -168,6 +168,9 @@ function translateAuthError(message: string): AuthError {
   if (m.includes('invalid login credentials')) {
     return new AuthError('INVALID_CREDENTIALS', 'We could not find an account with that email and password.')
   }
+  if (m.includes('provider is not enabled') || m.includes('unsupported provider')) {
+    return new AuthError('UNKNOWN', "Google sign-in isn't available yet. Please use your email and password for now.")
+  }
   return new AuthError('UNKNOWN', message)
 }
 
