@@ -150,7 +150,14 @@ function translateAuthError(message: string): AuthError {
 }
 
 async function loadCleaner(supabaseUser: User): Promise<Cleaner | null> {
-  const { data } = await supabase.from('cleaners').select('*').eq('id', supabaseUser.id).single()
+  let { data } = await supabase.from('cleaners').select('*').eq('id', supabaseUser.id).maybeSingle()
+  if (!data) {
+    // One login spans all three apps: an existing client (or ops) account
+    // signing in here has no cleaner row yet. Create one so they can start
+    // the application — it begins at 'applied' and goes through full vetting.
+    await supabase.rpc('ensure_app_profile', { app: 'cleaner' })
+    ;({ data } = await supabase.from('cleaners').select('*').eq('id', supabaseUser.id).maybeSingle())
+  }
   return data ? rowToCleaner(data as CleanerRow) : null
 }
 
@@ -188,6 +195,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
     })
     if (error) throw translateAuthError(error.message)
+    // An already-registered email comes back as a user with no identities
+    // (Supabase hides account existence and sends nothing). Say so plainly
+    // instead of showing "check your email" for a message that never comes.
+    if (data.user && (data.user.identities?.length ?? 0) === 0) {
+      throw new AuthError('EMAIL_TAKEN', "You already have a Muncie Maids account with that email. Sign in with the same password you use in our other apps.")
+    }
     return { confirmEmail: !data.session }
   }
 

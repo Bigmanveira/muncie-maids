@@ -2,7 +2,7 @@
 // warm and professional, active voice, "cleaning visit" / "cleaning team",
 // and no promised outcomes. Inline styles only — email clients strip <style>.
 
-import { siteUrl, type EmailMessage } from './email.ts'
+import { cleanerAppUrl, opsAppUrl, siteUrl, type EmailMessage } from './email.ts'
 
 const CLEAN_TYPE_LABEL: Record<string, string> = {
   standard: 'Standard Clean',
@@ -96,11 +96,13 @@ function layout(opts: { preheader: string; heading: string; intro: string; rows:
         <tr><td style="font-family:${FONT};font-size:11px;font-weight:600;letter-spacing:2.5px;text-transform:uppercase;color:${BRAND.primary};padding-bottom:12px;">Muncie Maid Service</td></tr>
         <tr><td style="font-family:${FONT};font-size:24px;font-weight:700;color:${BRAND.text};line-height:1.25;padding-bottom:12px;">${escapeHtml(opts.heading)}</td></tr>
         <tr><td style="font-family:${FONT};font-size:15px;color:${BRAND.text};line-height:1.6;padding-bottom:16px;">${opts.intro}</td></tr>
-        <tr><td><table role="presentation" width="100%" cellpadding="0" cellspacing="0">${detailRows(opts.rows)}</table></td></tr>
+        ${opts.rows.length ? `<tr><td><table role="presentation" width="100%" cellpadding="0" cellspacing="0">${detailRows(opts.rows)}</table></td></tr>` : ''}
         ${cta}
         <tr><td style="font-family:${FONT};font-size:13px;color:${BRAND.muted};line-height:1.6;padding-top:20px;">${opts.footerNote}</td></tr>
       </table>
-      <p style="font-family:${FONT};font-size:12px;color:${BRAND.muted};margin-top:16px;">Muncie Maid Service &middot; Serving Muncie, Yorktown, Gaston &amp; Albany</p>
+      <p style="font-family:${FONT};font-size:12px;color:${BRAND.muted};margin:20px 0 4px;">Muncie Maid Service &middot; Serving Muncie, Yorktown, Gaston &amp; Albany, Indiana</p>
+      <p style="font-family:${FONT};font-size:12px;color:${BRAND.muted};margin:0 0 4px;"><a href="${siteUrl()}" style="font-family:${FONT};color:${BRAND.secondary};text-decoration:none;">munciemaids.com</a></p>
+      <p style="font-family:${FONT};font-size:11px;color:${BRAND.muted};margin:0;">&copy; ${new Date().getFullYear()} Muncie Maid Service. All rights reserved.</p>
     </td></tr>
   </table>
 </body></html>`
@@ -165,3 +167,139 @@ export function bookingCancelledEmail(b: EmailBooking, refundAmount: number): Em
     text: `Hi ${name},\n\nWe cancelled your cleaning visit. ${refundLine}\n\n${textDetails(rows)}\n\nBook another visit: ${bookUrl}\n\nMuncie Maid Service`,
   }
 }
+
+// ── Client: reminder + thank-you ────────────────────────────────────────────
+
+export function visitReminderEmail(b: EmailBooking, manageUrl: string): EmailMessage {
+  const service = CLEAN_TYPE_LABEL[b.clean_type] ?? b.clean_type
+  const date = formatDate(b.service_date)
+  const rows: [string, string][] = [
+    ['Service', service],
+    ['Date', date],
+    ['Arrival window', b.time_window],
+    ['Address', `${b.address_line}, ${b.city}, IN ${b.zip}`],
+  ]
+  const name = firstName(b.customer_name)
+  return {
+    to: b.customer_email,
+    subject: `Reminder: your cleaning visit is tomorrow, ${b.time_window}`,
+    html: layout({
+      preheader: `Your cleaning team arrives tomorrow between ${b.time_window}.`,
+      heading: 'Your cleaning visit is tomorrow',
+      intro: `Hi ${escapeHtml(name)}, a quick reminder: your cleaning team arrives tomorrow. If you left entry instructions, we pass them along to your team.`,
+      rows,
+      cta: { label: 'View your booking', url: manageUrl },
+      footerNote: 'Plans changed? You can still cancel from the link above. Cancelling inside 24 hours of your visit refunds 50%.',
+    }),
+    text: `Hi ${name},\n\nA quick reminder: your cleaning team arrives tomorrow.\n\n${textDetails(rows)}\n\nView your booking: ${manageUrl}\n\nCancelling inside 24 hours of your visit refunds 50%.\n\nMuncie Maid Service`,
+  }
+}
+
+export function visitCompletedEmail(b: EmailBooking): EmailMessage {
+  const name = firstName(b.customer_name)
+  const bookUrl = siteUrl()
+  return {
+    to: b.customer_email,
+    subject: 'Thanks for choosing Muncie Maid Service',
+    html: layout({
+      preheader: 'Your cleaning team finished your visit today.',
+      heading: 'Your cleaning visit is complete',
+      intro: `Hi ${escapeHtml(name)}, your cleaning team finished your visit. Thank you for trusting us with your home.`,
+      rows: [],
+      cta: { label: 'Book your next visit', url: bookUrl },
+      footerNote: 'Weekly and biweekly visits come with a discount, and you keep the same easy online booking.',
+    }),
+    text: `Hi ${name},\n\nYour cleaning team finished your visit. Thank you for trusting us with your home.\n\nBook your next visit: ${bookUrl}\n\nMuncie Maid Service`,
+  }
+}
+
+// ── Cleaners ────────────────────────────────────────────────────────────────
+
+export interface EmailGig {
+  clean_type: string
+  service_date: string
+  time_window: string
+  city: string
+  quoted_price: number
+}
+
+export function gigOfferEmail(cleanerEmail: string, cleanerName: string, g: EmailGig): EmailMessage {
+  const service = CLEAN_TYPE_LABEL[g.clean_type] ?? g.clean_type
+  const date = formatDate(g.service_date)
+  const payout = money(Math.round(Number(g.quoted_price) * 0.7 * 100) / 100)
+  const rows: [string, string][] = [
+    ['Job', service],
+    ['Date', date],
+    ['Arrival window', g.time_window],
+    ['Town', g.city],
+    ['Your payout', payout],
+  ]
+  const url = cleanerAppUrl()
+  const name = firstName(cleanerName)
+  return {
+    to: cleanerEmail,
+    subject: `New gig offer: ${service} in ${g.city}, ${date}`,
+    html: layout({
+      preheader: `${payout} payout. Accept or decline within 4 hours.`,
+      heading: 'You have a new gig offer',
+      intro: `Hi ${escapeHtml(name)}, we matched you with a job. Accept it or pass on it in the app. Declining never counts against you.`,
+      rows,
+      cta: { label: 'Open the cleaner app', url },
+      footerNote: 'Offers stay open for 4 hours. After that, the job goes back to the open feed for any cleaner to claim.',
+    }),
+    text: `Hi ${name},\n\nWe matched you with a job. Accept it or pass on it in the app. Declining never counts against you.\n\n${textDetails(rows)}\n\nOpen the cleaner app: ${url}\n\nOffers stay open for 4 hours.\n\nMuncie Maid Service`,
+  }
+}
+
+export function applicationDecisionEmail(cleanerEmail: string, cleanerName: string, approved: boolean): EmailMessage {
+  const name = firstName(cleanerName)
+  const url = cleanerAppUrl()
+  if (approved) {
+    return {
+      to: cleanerEmail,
+      subject: "You're approved — your gig feed is open",
+      html: layout({
+        preheader: 'Sign in to start claiming jobs near you.',
+        heading: "Welcome aboard — you're approved",
+        intro: `Hi ${escapeHtml(name)}, we finished reviewing your application and approved it. Your gig feed is now open: claim the jobs that fit your schedule and keep 70% of every job you complete.`,
+        rows: [],
+        cta: { label: 'Open your gig feed', url },
+        footerNote: 'No minimum hours and no exclusivity. Work when it suits you.',
+      }),
+      text: `Hi ${name},\n\nWe approved your application. Your gig feed is now open: claim the jobs that fit your schedule and keep 70% of every job you complete.\n\nOpen your gig feed: ${url}\n\nMuncie Maid Service`,
+    }
+  }
+  return {
+    to: cleanerEmail,
+    subject: 'An update on your Muncie Maid Service application',
+    html: layout({
+      preheader: 'We reviewed your application.',
+      heading: 'An update on your application',
+      intro: `Hi ${escapeHtml(name)}, thank you for applying. After reviewing your application, we can't move forward with it at this time.`,
+      rows: [],
+      footerNote: 'If a background check report played a part in this decision, the screening company sends you a copy of the report along with your rights to dispute it.',
+    }),
+    text: `Hi ${name},\n\nThank you for applying. After reviewing your application, we can't move forward with it at this time.\n\nIf a background check report played a part in this decision, the screening company sends you a copy of the report along with your rights to dispute it.\n\nMuncie Maid Service`,
+  }
+}
+
+// ── Ops alerts ──────────────────────────────────────────────────────────────
+
+export function opsAlertEmail(to: string[], opts: { subject: string; heading: string; intro: string; rows: [string, string][]; path: string }): EmailMessage {
+  const url = `${opsAppUrl()}${opts.path}`
+  return {
+    to,
+    subject: `[Ops] ${opts.subject}`,
+    html: layout({
+      preheader: opts.intro.replace(/<[^>]+>/g, ''),
+      heading: opts.heading,
+      intro: escapeHtml(opts.intro),
+      rows: opts.rows,
+      cta: { label: 'Open the ops portal', url },
+      footerNote: 'You get this because you have ops access to Muncie Maid Service.',
+    }),
+    text: `${opts.intro}\n\n${textDetails(opts.rows)}\n\nOpen the ops portal: ${url}`,
+  }
+}
+
+export { CLEAN_TYPE_LABEL, formatDate }

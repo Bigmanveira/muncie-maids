@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.request-photo-upload]
 verify_jwt = false
+
+[functions.send-scheduled-emails]
+verify_jwt = false

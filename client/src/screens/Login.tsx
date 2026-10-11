@@ -5,6 +5,7 @@ import { SimpleHeader } from '../components/SimpleHeader'
 import { TextField } from '../components/TextField'
 import { AuthError, useAuth } from '../context/AuthContext'
 import { isValidEmail } from '../lib/validation'
+import { GoogleSignInButton } from '../components/GoogleSignInButton'
 
 export function Login() {
   const navigate = useNavigate()
@@ -57,6 +58,8 @@ export function Login() {
           <h2 className="font-heading text-2xl font-extrabold text-foreground mb-2">Welcome back</h2>
           <p className="text-muted-foreground text-sm">Sign in to see your bookings and manage your account.</p>
         </div>
+
+        <GoogleSignInButton returnTo={from ?? '/home'} onError={setError} />
 
         <div className="space-y-6">
           <TextField

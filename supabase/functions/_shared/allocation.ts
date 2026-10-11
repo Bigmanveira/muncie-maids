@@ -8,6 +8,7 @@
 // Deliberately NOT a factor: offer acceptance/decline history. Punishing
 // cleaners for not taking gigs looks like employer control (§8).
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
+import { notifyGigOffer } from './notify.ts'
 
 export interface AllocBooking {
   id: string
@@ -177,6 +178,9 @@ export async function autoOfferBest(
     actor_id: null,
     action: 'auto_offered',
   })
+
+  // Offers expire in 4h, so the cleaner needs to hear about it now.
+  await notifyGigOffer(supabase, booking.id, best.cleanerId)
 
   return best
 }

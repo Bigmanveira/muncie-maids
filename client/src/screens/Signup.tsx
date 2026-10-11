@@ -5,6 +5,7 @@ import { SimpleHeader } from '../components/SimpleHeader'
 import { TextField } from '../components/TextField'
 import { useAuth } from '../context/AuthContext'
 import { isValidEmail, isValidPhone } from '../lib/validation'
+import { GoogleSignInButton } from '../components/GoogleSignInButton'
 
 export function Signup() {
   const navigate = useNavigate()
@@ -87,6 +88,8 @@ export function Signup() {
           <h2 className="font-heading text-2xl font-extrabold text-foreground mb-2">Join Muncie Maids</h2>
           <p className="text-muted-foreground text-sm">Save your details for faster booking next time.</p>
         </div>
+
+        <GoogleSignInButton returnTo={from ?? '/home'} onError={setError} />
 
         <div className="space-y-6">
           <TextField id="name" label="Full name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Jane Doe" autoComplete="name" />

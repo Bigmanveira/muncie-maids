@@ -10,6 +10,7 @@ import { BookingModalProvider } from './context/BookingModalContext'
 import { FunnelGuard } from './components/FunnelGuard'
 import { ScrollToTop } from './components/ScrollToTop'
 import { ChatWidget } from './components/ChatWidget'
+import { CompleteProfileModal } from './components/CompleteProfileModal'
 import { TabShell } from './layouts/TabShell'
 import { Home } from './screens/Home'
 import { InstantQuote } from './screens/InstantQuote'
@@ -115,6 +116,7 @@ export default function App() {
                   </Routes>
                 </Suspense>
                 <ChatWidget />
+                <CompleteProfileModal />
                 </BookingModalProvider>
               </FunnelProvider>
             </ChatProvider>

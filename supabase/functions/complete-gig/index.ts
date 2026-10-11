@@ -1,6 +1,8 @@
 import { corsHeaders, errorResponse, jsonResponse } from '../_shared/cors.ts'
 import { getSupabaseAdmin } from '../_shared/supabaseAdmin.ts'
 import { getAuthedCleaner } from '../_shared/cleanerAuth.ts'
+import { sendAndLog } from '../_shared/notify.ts'
+import { visitCompletedEmail, type EmailBooking } from '../_shared/emailTemplates.ts'
 
 const PAYOUT_PERCENT = 0.7
 const REQUIRED_PHOTO_COUNT = 4
@@ -78,6 +80,15 @@ Deno.serve(async (req) => {
     actor_id: cleaner.id,
     action: 'completed',
   })
+
+  const { data: client } = await supabase
+    .from('bookings')
+    .select('customer_name, customer_email, clean_type, service_date, time_window, address_line, city, zip, quoted_price')
+    .eq('id', booking.id)
+    .single()
+  if (client) {
+    await sendAndLog(supabase, visitCompletedEmail(client as EmailBooking), { bookingId: booking.id, action: 'thank_you_email_sent' })
+  }
 
   return jsonResponse({ status: 'completed', payoutAmount })
 })

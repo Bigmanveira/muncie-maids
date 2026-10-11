@@ -67,6 +67,8 @@ interface AuthContextValue {
   /** `confirmEmail: true` means a confirmation email was sent and there's no session yet. */
   signup: (input: SignupInput) => Promise<{ confirmEmail: boolean }>
   login: (email: string, password: string) => Promise<void>
+  /** Redirects to Google; the session lands back on `returnTo`. */
+  loginWithGoogle: (returnTo?: string) => Promise<void>
   logout: () => void
   resendConfirmation: (email: string) => Promise<void>
   requestPasswordReset: (email: string) => Promise<void>
@@ -131,11 +133,21 @@ function profileRowToHomeProfile(row: ProfileRow | null): HomeProfile {
 }
 
 async function loadAuthUser(supabaseUser: User): Promise<AuthUser> {
-  const { data } = await supabase.from('profiles').select('*').eq('id', supabaseUser.id).single()
+  let { data } = await supabase.from('profiles').select('*').eq('id', supabaseUser.id).maybeSingle()
+  if (!data) {
+    // One login spans all three apps: someone who signed up as a cleaner (or
+    // ops) has no client profile yet. Create theirs from what we already know.
+    await supabase.rpc('ensure_app_profile', { app: 'client' })
+    ;({ data } = await supabase.from('profiles').select('*').eq('id', supabaseUser.id).maybeSingle())
+  }
   const row = data as ProfileRow | null
   return {
     id: supabaseUser.id,
-    name: row?.name ?? (supabaseUser.user_metadata?.name as string | undefined) ?? '',
+    name:
+      row?.name ||
+      (supabaseUser.user_metadata?.name as string | undefined) ||
+      (supabaseUser.user_metadata?.full_name as string | undefined) ||
+      '',
     email: supabaseUser.email ?? '',
     phone: row?.phone ?? (supabaseUser.user_metadata?.phone as string | undefined) ?? '',
     homeProfile: profileRowToHomeProfile(row),
@@ -193,6 +205,12 @@ function SupabaseAuthProvider({ children }: { children: ReactNode }) {
       },
     })
     if (error) throw translateAuthError(error.message)
+    // An already-registered email comes back as a user with no identities
+    // (Supabase hides account existence and sends nothing). Say so plainly
+    // instead of showing "check your email" for a message that never comes.
+    if (data.user && (data.user.identities?.length ?? 0) === 0) {
+      throw new AuthError('EMAIL_TAKEN', "You already have a Muncie Maids account with that email. Sign in with the same password you use in our other apps.")
+    }
     return { confirmEmail: !data.session }
   }
 
@@ -200,6 +218,14 @@ function SupabaseAuthProvider({ children }: { children: ReactNode }) {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) throw translateAuthError(error.message)
     if (data.user) setUser(await loadAuthUser(data.user))
+  }
+
+  async function loginWithGoogle(returnTo = '/home') {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: `${window.location.origin}${returnTo}` },
+    })
+    if (error) throw translateAuthError(error.message)
   }
 
   function logout() {
@@ -269,6 +295,7 @@ function SupabaseAuthProvider({ children }: { children: ReactNode }) {
         loading,
         signup,
         login,
+        loginWithGoogle,
         logout,
         resendConfirmation,
         requestPasswordReset,
@@ -344,6 +371,10 @@ function MockAuthProvider({ children }: { children: ReactNode }) {
     setUser(nextUser)
   }
 
+  async function loginWithGoogle() {
+    throw new AuthError('UNKNOWN', 'Google sign-in needs the live backend — it is unavailable in offline demo mode.')
+  }
+
   function logout() {
     localStorage.removeItem(SESSION_KEY)
     setUser(null)
@@ -389,6 +420,7 @@ function MockAuthProvider({ children }: { children: ReactNode }) {
         loading: false,
         signup,
         login,
+        loginWithGoogle,
         logout,
         resendConfirmation,
         requestPasswordReset,

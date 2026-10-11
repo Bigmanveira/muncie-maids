@@ -1,6 +1,7 @@
 import { corsHeaders, errorResponse, jsonResponse } from '../_shared/cors.ts'
 import { getSupabaseAdmin } from '../_shared/supabaseAdmin.ts'
 import { getAuthedOps } from '../_shared/opsAuth.ts'
+import { notifyGigOffer } from '../_shared/notify.ts'
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders })
@@ -53,6 +54,8 @@ Deno.serve(async (req) => {
     actor_id: ops.id,
     action: 'offered',
   })
+
+  await notifyGigOffer(supabase, body.bookingId, body.cleanerId)
 
   return jsonResponse({ status: 'offered' })
 })

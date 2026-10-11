@@ -119,6 +119,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
     })
     if (error) throw translateAuthError(error.message)
+    // An already-registered email comes back as a user with no identities
+    // (Supabase hides account existence and sends nothing). Say so plainly
+    // instead of showing "check your email" for a message that never comes.
+    if (data.user && (data.user.identities?.length ?? 0) === 0) {
+      throw new AuthError('EMAIL_TAKEN', "You already have a Muncie Maids account with that email. Sign in with the same password you use in our other apps.")
+    }
     return { confirmEmail: !data.session }
   }
 

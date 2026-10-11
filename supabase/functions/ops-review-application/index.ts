@@ -1,6 +1,7 @@
 import { corsHeaders, errorResponse, jsonResponse } from '../_shared/cors.ts'
 import { getSupabaseAdmin } from '../_shared/supabaseAdmin.ts'
 import { getAuthedOps } from '../_shared/opsAuth.ts'
+import { notifyApplicationDecision } from '../_shared/notify.ts'
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders })
@@ -54,6 +55,8 @@ Deno.serve(async (req) => {
     actor_id: ops.id,
     action: body.decision === 'approve' ? 'application_approved' : 'application_declined',
   })
+
+  await notifyApplicationDecision(supabase, body.cleanerId, body.decision === 'approve')
 
   return jsonResponse({ status: nextStatus })
 })

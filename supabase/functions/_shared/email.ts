@@ -16,14 +16,23 @@ export function siteUrl(): string {
   return (Deno.env.get('SITE_URL') ?? 'https://munciemaids.com').replace(/\/$/, '')
 }
 
+export function cleanerAppUrl(): string {
+  return (Deno.env.get('CLEANER_APP_URL') ?? 'https://cleaner-psi-five.vercel.app').replace(/\/$/, '')
+}
+
+export function opsAppUrl(): string {
+  return (Deno.env.get('OPS_APP_URL') ?? 'https://ops-flame.vercel.app').replace(/\/$/, '')
+}
+
 export interface EmailMessage {
-  to: string
+  to: string | string[]
   subject: string
   html: string
   text: string
 }
 
 export async function sendEmail(msg: EmailMessage): Promise<boolean> {
+  if (Array.isArray(msg.to) && msg.to.length === 0) return false
   const apiKey = Deno.env.get('RESEND_API_KEY')
   if (!apiKey) {
     console.warn('RESEND_API_KEY not set — skipping email:', msg.subject)
@@ -36,7 +45,7 @@ export async function sendEmail(msg: EmailMessage): Promise<boolean> {
       headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         from: Deno.env.get('EMAIL_FROM') ?? DEFAULT_FROM,
-        to: [msg.to],
+        to: Array.isArray(msg.to) ? msg.to : [msg.to],
         subject: msg.subject,
         html: msg.html,
         text: msg.text,

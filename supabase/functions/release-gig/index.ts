@@ -3,6 +3,8 @@ import { getSupabaseAdmin } from '../_shared/supabaseAdmin.ts'
 import { getAuthedCleaner } from '../_shared/cleanerAuth.ts'
 import { timeWindowStartHour } from '../_shared/timeWindows.ts'
 import { autoOfferBest } from '../_shared/allocation.ts'
+import { notifyOps } from '../_shared/notify.ts'
+import { CLEAN_TYPE_LABEL, formatDate } from '../_shared/emailTemplates.ts'
 
 // Releasing inside 48h of the visit is penalty-free to the client (the gig
 // just goes back to OPEN) but counts against the cleaner's reliability and
@@ -66,6 +68,33 @@ Deno.serve(async (req) => {
     actor_id: cleaner.id,
     action: insideAlertWindow ? 'released_inside_48h' : 'released',
   })
+
+  if (insideAlertWindow) {
+    const { data: gig } = await supabase
+      .from('bookings')
+      .select('customer_name, clean_type, service_date, time_window, city')
+      .eq('id', booking.id)
+      .single()
+    const { data: who } = await supabase.from('cleaners').select('name').eq('id', cleaner.id).single()
+    if (gig) {
+      await notifyOps(
+        supabase,
+        {
+          subject: `Late release: ${gig.city} job on ${formatDate(gig.service_date)}`,
+          heading: 'A cleaner released a job inside 48 hours',
+          intro: `${who?.name ?? 'A cleaner'} released a job that starts in under 48 hours. We already offered it to the next best match; check that someone picks it up.`,
+          rows: [
+            ['Client', gig.customer_name],
+            ['Job', CLEAN_TYPE_LABEL[gig.clean_type] ?? gig.clean_type],
+            ['When', `${formatDate(gig.service_date)}, ${gig.time_window}`],
+            ['Town', gig.city],
+          ],
+          path: '/',
+        },
+        { bookingId: booking.id, action: 'late_release_alert_sent' },
+      )
+    }
+  }
 
   // The released gig needs a new cleaner — auto-offer the best match right
   // away (especially valuable inside the 48h window). Best-effort.
