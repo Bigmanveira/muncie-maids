@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { Icon } from '@iconify/react'
 import { useAuth } from '../context/AuthContext'
 import {
-  ApiError, addOpsUser, getCleanerDocs, listCleaners, recordBgCheck, reviewApplication, setCleanerActive,
+  ApiError, addOpsUser, getCleanerDocs, sendTestEmail, listCleaners, recordBgCheck, reviewApplication, setCleanerActive,
   type BgCheckStatus, type OpsCleaner,
 } from '../lib/api'
 import { CLEAN_TYPE_LABEL, formatDateShort } from '../lib/format'
@@ -175,7 +175,48 @@ export function Cleaners() {
       )}
 
       {opsUser?.role === 'owner' && <OpsTeamSection />}
+      {opsUser?.role === 'owner' && <EmailSetupSection />}
     </div>
+  )
+}
+
+function EmailSetupSection() {
+  const [sending, setSending] = useState(false)
+  const [message, setMessage] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  async function handleSend() {
+    setSending(true)
+    setMessage(null)
+    setError(null)
+    try {
+      const { to } = await sendTestEmail()
+      setMessage(`Sent a sample booking confirmation to ${to}. Check your inbox (and spam, the first time).`)
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not send the test email.')
+    } finally {
+      setSending(false)
+    }
+  }
+
+  return (
+    <section>
+      <h3 className="font-heading text-lg font-extrabold text-foreground mb-2">Client Emails</h3>
+      <p className="text-xs text-muted-foreground mb-4 max-w-lg">
+        Clients get a confirmation email when they pay and a notice when a booking is cancelled. Send yourself a sample to check that email is working.
+      </p>
+      <button
+        type="button"
+        onClick={handleSend}
+        disabled={sending}
+        className="inline-flex items-center gap-2 bg-secondary text-white font-bold px-5 py-2.5 rounded-full text-sm disabled:opacity-50"
+      >
+        <Icon icon="solar:letter-linear" className="text-base" />
+        {sending ? 'Sending…' : 'Send Test Email'}
+      </button>
+      {message && <p className="text-sm text-chart-3 font-bold mt-3">{message}</p>}
+      {error && <p className="text-sm text-destructive font-bold mt-3">{error}</p>}
+    </section>
   )
 }
 

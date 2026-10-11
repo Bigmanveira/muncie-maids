@@ -207,6 +207,11 @@ export function markPaid(bookingIds: string[]) {
   return invoke<{ paidCount: number }>('ops-mark-paid', { bookingIds })
 }
 
+/** Sends a sample booking confirmation to the signed-in ops user. */
+export function sendTestEmail() {
+  return invoke<{ status: 'sent'; to: string }>('ops-send-test-email')
+}
+
 export function addOpsUser(email: string) {
   return invoke<{ status: 'added' }>('ops-add-ops-user', { email })
 }
