@@ -303,3 +303,7 @@ export function opsAlertEmail(to: string[], opts: { subject: string; heading: st
 }
 
 export { CLEAN_TYPE_LABEL, formatDate }
+
+/** The shared branded layout, exported so scripts/build-auth-templates.ts
+ * can render Supabase Auth's templates (sign-up, reset) in the same design. */
+export const renderLayout = layout
