@@ -10,6 +10,16 @@ const CLEAN_TYPE_LABEL: Record<string, string> = {
   moveout: 'Move-out Clean',
 }
 
+// Poppins loads in Apple Mail, iOS Mail and most Android clients; Gmail
+// strips web fonts, so the stack falls back to Helvetica/Arial there.
+const FONT = "'Poppins',Helvetica,Arial,sans-serif"
+
+// Served from the client site's public folder (client/public/email-logo.png).
+// Overridable so emails keep a working logo before the domain is live.
+function logoUrl(): string {
+  return Deno.env.get('EMAIL_LOGO_URL') ?? `${siteUrl()}/email-logo.png`
+}
+
 const BRAND = {
   primary: '#D65A5A',
   secondary: '#2C5282',
@@ -55,8 +65,8 @@ function detailRows(rows: [string, string][]): string {
     .map(
       ([label, value]) => `
         <tr>
-          <td style="padding:10px 0;border-bottom:1px solid ${BRAND.border};color:${BRAND.muted};font-size:13px;width:38%;vertical-align:top;">${escapeHtml(label)}</td>
-          <td style="padding:10px 0;border-bottom:1px solid ${BRAND.border};color:${BRAND.text};font-size:14px;font-weight:600;">${escapeHtml(value)}</td>
+          <td style="font-family:${FONT};padding:10px 0;border-bottom:1px solid ${BRAND.border};color:${BRAND.muted};font-size:13px;width:38%;vertical-align:top;">${escapeHtml(label)}</td>
+          <td style="font-family:${FONT};padding:10px 0;border-bottom:1px solid ${BRAND.border};color:${BRAND.text};font-size:14px;font-weight:600;">${escapeHtml(value)}</td>
         </tr>`,
     )
     .join('')
@@ -65,23 +75,32 @@ function detailRows(rows: [string, string][]): string {
 function layout(opts: { preheader: string; heading: string; intro: string; rows: [string, string][]; cta?: { label: string; url: string }; footerNote: string }): string {
   const cta = opts.cta
     ? `<tr><td style="padding:24px 0 8px;">
-         <a href="${opts.cta.url}" style="display:inline-block;background:${BRAND.primary};color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;padding:14px 28px;border-radius:999px;">${escapeHtml(opts.cta.label)}</a>
+         <a href="${opts.cta.url}" style="font-family:${FONT};display:inline-block;background:${BRAND.primary};color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;padding:14px 28px;border-radius:999px;">${escapeHtml(opts.cta.label)}</a>
        </td></tr>`
     : ''
   return `<!doctype html>
-<html><body style="margin:0;padding:0;background:${BRAND.background};font-family:'Plus Jakarta Sans',Helvetica,Arial,sans-serif;">
+<html><head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap'); body, table, td, a, p, span { font-family: ${FONT}; }</style>
+</head>
+<body style="margin:0;padding:0;background:${BRAND.background};font-family:${FONT};">
   <span style="display:none;max-height:0;overflow:hidden;">${escapeHtml(opts.preheader)}</span>
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${BRAND.background};padding:32px 16px;">
+    <tr><td align="center" style="padding-bottom:20px;">
+      <img src="${logoUrl()}" width="96" height="96" alt="Muncie Maid Service" style="display:block;width:96px;height:96px;border:0;outline:none;text-decoration:none;">
+    </td></tr>
     <tr><td align="center">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border:1px solid ${BRAND.border};border-radius:24px;padding:32px;">
-        <tr><td style="font-size:11px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:${BRAND.primary};padding-bottom:12px;">Muncie Maid Service</td></tr>
-        <tr><td style="font-size:24px;font-weight:800;color:${BRAND.text};line-height:1.25;padding-bottom:12px;">${escapeHtml(opts.heading)}</td></tr>
-        <tr><td style="font-size:15px;color:${BRAND.text};line-height:1.6;padding-bottom:16px;">${opts.intro}</td></tr>
+        <tr><td style="font-family:${FONT};font-size:11px;font-weight:600;letter-spacing:2.5px;text-transform:uppercase;color:${BRAND.primary};padding-bottom:12px;">Muncie Maid Service</td></tr>
+        <tr><td style="font-family:${FONT};font-size:24px;font-weight:700;color:${BRAND.text};line-height:1.25;padding-bottom:12px;">${escapeHtml(opts.heading)}</td></tr>
+        <tr><td style="font-family:${FONT};font-size:15px;color:${BRAND.text};line-height:1.6;padding-bottom:16px;">${opts.intro}</td></tr>
         <tr><td><table role="presentation" width="100%" cellpadding="0" cellspacing="0">${detailRows(opts.rows)}</table></td></tr>
         ${cta}
-        <tr><td style="font-size:13px;color:${BRAND.muted};line-height:1.6;padding-top:20px;">${opts.footerNote}</td></tr>
+        <tr><td style="font-family:${FONT};font-size:13px;color:${BRAND.muted};line-height:1.6;padding-top:20px;">${opts.footerNote}</td></tr>
       </table>
-      <p style="font-size:12px;color:${BRAND.muted};margin-top:16px;">Muncie Maid Service &middot; Serving Muncie, Yorktown, Gaston &amp; Albany</p>
+      <p style="font-family:${FONT};font-size:12px;color:${BRAND.muted};margin-top:16px;">Muncie Maid Service &middot; Serving Muncie, Yorktown, Gaston &amp; Albany</p>
     </td></tr>
   </table>
 </body></html>`
