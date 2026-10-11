@@ -2,6 +2,8 @@ import Stripe from 'npm:stripe@17.5.0'
 import { corsHeaders, errorResponse, jsonResponse } from '../_shared/cors.ts'
 import { getSupabaseAdmin } from '../_shared/supabaseAdmin.ts'
 import { getAuthedOps } from '../_shared/opsAuth.ts'
+import { sendEmail } from '../_shared/email.ts'
+import { bookingCancelledEmail, type EmailBooking } from '../_shared/emailTemplates.ts'
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders })
@@ -63,6 +65,20 @@ Deno.serve(async (req) => {
     actor_id: ops.id,
     action: 'cancelled',
   })
+
+  // Clearing an abandoned checkout (never paid) isn't a visit the client
+  // thinks they have, so only paid bookings get a cancellation email.
+  if (booking.status !== 'pending_payment') {
+    const sent = await sendEmail(bookingCancelledEmail(booking as EmailBooking, refundAmount))
+    if (sent) {
+      await supabase.from('events').insert({
+        booking_id: body.bookingId,
+        actor_type: 'system',
+        actor_id: null,
+        action: 'cancellation_email_sent',
+      })
+    }
+  }
 
   return jsonResponse({ status: 'cancelled', refundAmount })
 })

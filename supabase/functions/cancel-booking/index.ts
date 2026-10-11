@@ -3,6 +3,8 @@ import { corsHeaders, errorResponse, jsonResponse } from '../_shared/cors.ts'
 import { getSupabaseAdmin } from '../_shared/supabaseAdmin.ts'
 import { verifyBookingToken } from '../_shared/token.ts'
 import { timeWindowStartHour } from '../_shared/timeWindows.ts'
+import { sendEmail } from '../_shared/email.ts'
+import { bookingCancelledEmail, type EmailBooking } from '../_shared/emailTemplates.ts'
 
 // Cancellation policy (product-plan-v2 §5.1/§9, owner-confirmed):
 // full refund at 24h+ before the visit, 50% retained inside 24h.
@@ -81,6 +83,18 @@ Deno.serve(async (req) => {
 
   if (updateError) {
     return errorResponse('UNKNOWN', 'Could not cancel booking', 500)
+  }
+
+  if (booking.status !== 'pending_payment') {
+    const sent = await sendEmail(bookingCancelledEmail(booking as EmailBooking, refundAmount))
+    if (sent) {
+      await supabase.from('events').insert({
+        booking_id: bookingId,
+        actor_type: 'system',
+        actor_id: null,
+        action: 'cancellation_email_sent',
+      })
+    }
   }
 
   return jsonResponse({ status: 'cancelled', refundAmount, refundPercent })

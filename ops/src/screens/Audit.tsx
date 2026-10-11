@@ -20,6 +20,8 @@ const ACTION_META: Record<string, { icon: string; label: string; tone: 'good' | 
   released_inside_48h: { icon: 'solar:danger-triangle-linear', label: 'released a gig inside 48h', tone: 'bad' },
   completed: { icon: 'solar:check-read-linear', label: 'completed a job', tone: 'good' },
   cancelled: { icon: 'solar:trash-bin-minimalistic-linear', label: 'cancelled a booking', tone: 'bad' },
+  confirmation_email_sent: { icon: 'solar:letter-linear', label: 'sent the booking confirmation email', tone: 'neutral' },
+  cancellation_email_sent: { icon: 'solar:letter-linear', label: 'sent the cancellation email', tone: 'neutral' },
   application_approved: { icon: 'solar:user-check-rounded-linear', label: 'approved an application', tone: 'good' },
   application_declined: { icon: 'solar:user-cross-rounded-linear', label: 'declined an application', tone: 'bad' },
   cleaner_reactivated: { icon: 'solar:play-circle-linear', label: 'reactivated a cleaner', tone: 'good' },
